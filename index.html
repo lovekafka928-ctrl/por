@@ -1,0 +1,1504 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>คณิตศาสตร์พิชิตมหาสมุทร - การคูณ (ป.2)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700&display=swap');
+
+        body {
+            font-family: 'Sarabun', sans-serif;
+            background-color: #020813;
+            color: white;
+            overflow: hidden;
+            touch-action: none; /* Prevent scroll on touch */
+        }
+
+        /* Glowing Effects */
+        .neon-text {
+            text-shadow: 0 0 5px #00ffff, 0 0 10px #00ffff, 0 0 20px #008b8b;
+        }
+        .neon-box {
+            box-shadow: 0 0 10px rgba(0, 255, 255, 0.5), inset 0 0 10px rgba(0, 255, 255, 0.2);
+            border: 1px solid #00ffff;
+            background: rgba(2, 13, 30, 0.8);
+            backdrop-filter: blur(5px);
+        }
+        .neon-btn {
+            background: linear-gradient(45deg, #004d4d, #008b8b);
+            border: 1px solid #00ffff;
+            box-shadow: 0 0 10px #008b8b;
+            transition: all 0.3s;
+        }
+        .neon-btn:hover {
+            box-shadow: 0 0 20px #00ffff, inset 0 0 10px #00ffff;
+            transform: scale(1.05);
+        }
+        .neon-btn:active {
+            transform: scale(0.95);
+        }
+        .danger-btn {
+            background: linear-gradient(45deg, #4d0000, #8b0000);
+            border: 1px solid #ff0000;
+            box-shadow: 0 0 10px #8b0000;
+        }
+        .danger-btn:hover {
+            box-shadow: 0 0 20px #ff0000;
+        }
+
+        /* Hologram Popup */
+        .hologram {
+            background: repeating-linear-gradient(
+                180deg,
+                rgba(0, 255, 255, 0.1),
+                rgba(0, 255, 255, 0.1) 2px,
+                rgba(0, 255, 255, 0.2) 2px,
+                rgba(0, 255, 255, 0.2) 4px
+            );
+            border: 2px solid #00ffff;
+            box-shadow: 0 0 20px #00ffff, inset 0 0 20px #00ffff;
+            animation: flicker 2s infinite alternate;
+        }
+
+        @keyframes flicker {
+            0% { opacity: 0.95; box-shadow: 0 0 15px #00ffff; }
+            100% { opacity: 1; box-shadow: 0 0 25px #00ffff; }
+        }
+
+        /* Certificate */
+        .certificate {
+            background: linear-gradient(135deg, #0a192f, #020813);
+            border: 5px solid #d4af37;
+            box-shadow: 0 0 30px #d4af37;
+            position: relative;
+        }
+        .certificate::before {
+            content: '';
+            position: absolute;
+            top: 10px; left: 10px; right: 10px; bottom: 10px;
+            border: 2px dashed #d4af37;
+            pointer-events: none;
+        }
+
+        /* Joystick */
+        #joystick-zone {
+            position: absolute;
+            bottom: 40px;
+            left: 20px;
+            width: 120px;
+            height: 120px;
+            background: rgba(0, 255, 255, 0.1);
+            border: 2px solid rgba(0, 255, 255, 0.3);
+            border-radius: 50%;
+            display: none;
+            z-index: 50;
+        }
+        #joystick-knob {
+            position: absolute;
+            top: 35px;
+            left: 35px;
+            width: 50px;
+            height: 50px;
+            background: rgba(0, 255, 255, 0.6);
+            border-radius: 50%;
+            box-shadow: 0 0 10px #00ffff;
+            pointer-events: none;
+        }
+
+        canvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 0;
+        }
+        
+        .screen {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: radial-gradient(circle at center, #0a192f, #020813);
+        }
+        .hidden { display: none !important; }
+        .z-top { z-index: 100; }
+        
+        /* Hearts */
+        .heart {
+            display: inline-block;
+            width: 20px; height: 20px;
+            background: red;
+            clip-path: polygon(50% 100%, 0 50%, 0 0, 50% 30%, 100% 0, 100% 50%);
+            margin: 0 2px;
+        }
+        .heart-half {
+            background: linear-gradient(90deg, red 50%, gray 50%);
+        }
+        .heart-empty {
+            background: gray;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Audio System (Synthesizer to avoid external file issues) -->
+    <script>
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        
+        const soundFx = {
+            playTone: (freq, type, duration, vol=0.1) => {
+                if(audioCtx.state === 'suspended') audioCtx.resume();
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = type;
+                osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+                gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start();
+                osc.stop(audioCtx.currentTime + duration);
+            },
+            click: () => soundFx.playTone(600, 'sine', 0.1, 0.1),
+            // เสียง error (โดนฉลามกัด) ลดความดังเหลือ 0.05
+            error: () => soundFx.playTone(150, 'sawtooth', 0.3, 0.05),
+            collect: () => {
+                soundFx.playTone(800, 'sine', 0.1, 0.1);
+                setTimeout(() => soundFx.playTone(1200, 'sine', 0.15, 0.1), 100);
+            },
+            correct: () => {
+                soundFx.playTone(440, 'square', 0.1, 0.1);
+                setTimeout(() => soundFx.playTone(554, 'square', 0.1, 0.1), 100);
+                setTimeout(() => soundFx.playTone(659, 'square', 0.2, 0.1), 200);
+            },
+            wrong: () => {
+                soundFx.playTone(300, 'sawtooth', 0.2, 0.1);
+                setTimeout(() => soundFx.playTone(250, 'sawtooth', 0.4, 0.1), 200);
+            },
+            win: () => {
+                const notes = [523.25, 659.25, 783.99, 1046.50];
+                notes.forEach((freq, i) => {
+                    setTimeout(() => soundFx.playTone(freq, 'square', 0.3, 0.15), i * 150);
+                });
+                setTimeout(() => soundFx.playTone(1046.50, 'square', 0.6, 0.15), notes.length * 150);
+            },
+            attack: () => {
+                soundFx.playTone(100, 'square', 0.1, 0.2);
+                setTimeout(() => soundFx.playTone(50, 'sawtooth', 0.2, 0.2), 100);
+            }
+        };
+
+        // BGM Loop
+        let bgmOsc = null;
+        let bgmGain = null;
+        let bgmInterval = null;
+        function toggleBGM(play) {
+            if (play) {
+                if(bgmInterval) return;
+                let step = 0;
+                const notes = [196, 220, 246, 261, 196, 164, 196]; // Dark mysterious tone
+                bgmInterval = setInterval(() => {
+                    soundFx.playTone(notes[step % notes.length] * 0.5, 'sine', 1, 0.05);
+                    step++;
+                }, 1000);
+            } else {
+                clearInterval(bgmInterval);
+                bgmInterval = null;
+            }
+        }
+    </script>
+
+    <!-- UI Elements -->
+    
+    <!-- 1. Intro / Name Input -->
+    <div id="screen-intro" class="screen">
+        <h1 class="text-5xl md:text-7xl font-bold text-center neon-text mb-8">คณิตศาสตร์<br>พิชิตมหาสมุทร</h1>
+        <div class="neon-box p-8 rounded-xl flex flex-col items-center max-w-md w-11/12">
+            <h2 class="text-2xl mb-4 text-cyan-300">กรอกชื่อเพื่อเริ่มการผจญภัย</h2>
+            <input type="text" id="playerName" placeholder="ชื่อผู้เล่น..." class="w-full p-3 mb-4 rounded bg-gray-800 text-white border border-cyan-500 focus:outline-none focus:border-cyan-200 text-center text-xl">
+            <button onclick="startGameFlow()" class="neon-btn w-full py-3 text-xl rounded-lg font-bold">เข้าสู่บทเรียน</button>
+        </div>
+    </div>
+
+    <!-- Alert Modal -->
+    <div id="alert-modal" class="hidden fixed inset-0 z-top bg-black bg-opacity-80 flex justify-center items-center">
+        <div class="neon-box p-6 rounded-lg text-center max-w-sm">
+            <h3 class="text-red-400 text-2xl mb-4 font-bold">แจ้งเตือน!</h3>
+            <p id="alert-msg" class="mb-6 text-lg"></p>
+            <button onclick="document.getElementById('alert-modal').classList.add('hidden'); soundFx.click();" class="danger-btn px-6 py-2 rounded font-bold">ตกลง</button>
+        </div>
+    </div>
+
+    <!-- 2. Lesson Page -->
+    <div id="screen-lesson" class="screen hidden">
+        <h2 class="text-4xl neon-text mb-6">บทเรียน: การคูณ (ป.2)</h2>
+        <div class="neon-box p-6 md:p-10 rounded-xl max-w-3xl w-11/12 text-lg leading-relaxed overflow-y-auto max-h-[70vh]">
+            <p class="mb-4 text-cyan-200 text-xl font-bold">การคูณคืออะไร?</p>
+            <p class="mb-4">การคูณ คือ การบวกจำนวนที่เท่าๆ กันหลายๆ ครั้ง</p>
+            <div class="bg-gray-800 p-4 rounded mb-4 border border-gray-600">
+                <p>ตัวอย่าง: มีปลา 3 กลุ่ม กลุ่มละ 4 ตัว</p>
+                <p class="text-cyan-400 text-2xl font-bold my-2">3 × 4 = 12</p>
+                <p>ความหมาย: 4 + 4 + 4 = 12</p>
+            </div>
+            <ul class="list-disc ml-6 mb-6">
+                <li>ตัวหน้า (3) คือ <span class="text-yellow-400">จำนวนกลุ่ม</span></li>
+                <li>ตัวหลัง (4) คือ <span class="text-yellow-400">จำนวนสิ่งของในแต่ละกลุ่ม</span></li>
+                <li>ผลลัพธ์ (12) คือ <span class="text-green-400">จำนวนทั้งหมด</span></li>
+            </ul>
+            <p class="text-center text-gray-400 italic">"ท่องสูตรคูณให้แม่น จะช่วยให้เอาตัวรอดจากฉลามได้นะ!"</p>
+        </div>
+        <button onclick="nav('screen-howtoplay')" class="neon-btn mt-6 px-10 py-3 text-xl rounded-lg font-bold">ถัดไป: วิธีเล่น</button>
+    </div>
+
+    <!-- 3. How to Play -->
+    <div id="screen-howtoplay" class="screen hidden">
+        <h2 class="text-4xl neon-text mb-6">วิธีเข้าเล่นเกม</h2>
+        <div class="neon-box p-6 md:p-8 rounded-xl max-w-3xl w-11/12 text-lg overflow-y-auto max-h-[70vh]">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <h3 class="text-2xl text-cyan-300 mb-2">เป้าหมาย</h3>
+                    <p class="mb-4">คุณติดเกาะ! ว่ายน้ำหลบฉลามและเก็บ <span class="text-yellow-400 font-bold">แผ่นไม้ 3 ชิ้น</span> เพื่อปลดล็อคโจทย์คณิตศาสตร์</p>
+                    <h3 class="text-2xl text-cyan-300 mb-2">การควบคุม</h3>
+                    <ul class="list-disc ml-6 mb-4">
+                        <li><b>PC:</b> ใช้ปุ่มลูกศร (⬅️ ⬆️ ⬇️ ➡️) ในการว่ายน้ำ</li>
+                        <li><b>มือถือ:</b> สัมผัสและลากจอยสติ๊กที่มุมซ้ายล่าง</li>
+                    </ul>
+                </div>
+                <div>
+                    <h3 class="text-2xl text-cyan-300 mb-2">โหมดการเล่น</h3>
+                    <div class="bg-gray-800 p-3 rounded mb-2 border border-gray-600">
+                        <p class="font-bold text-green-400">1. เล่นคนเดียว (Single Player)</p>
+                        <p class="text-sm">ตอบถูกเพื่อสร้างแพหนีออกจากเกาะ (เก็บครบ 10 ชิ้น) เลือกแบบ 10 ข้อ หรือ จับเวลา</p>
+                    </div>
+                    <div class="bg-gray-800 p-3 rounded border border-gray-600">
+                        <p class="font-bold text-red-400">2. แบทเทิ้ล (Battle 2-4 ทีม)</p>
+                        <p class="text-sm">ผลัดกันเล่น มี 5 หัวใจ ตอบถูกโจมตีเพื่อนได้ ตอบผิดเสียหัวใจ ทีมสุดท้ายที่รอดคือผู้ชนะ!</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="flex gap-4 mt-6">
+            <button onclick="nav('screen-lesson')" class="bg-gray-700 hover:bg-gray-600 border border-gray-500 px-6 py-3 rounded-lg font-bold transition">กลับ</button>
+            <button onclick="nav('screen-menu')" class="neon-btn px-10 py-3 text-xl rounded-lg font-bold">เลือกโหมดเกม</button>
+        </div>
+    </div>
+
+    <!-- 4. Main Menu -->
+    <div id="screen-menu" class="screen hidden">
+        <h2 class="text-4xl neon-text mb-8">เลือกโหมดการเล่น</h2>
+        <div class="flex flex-col md:flex-row gap-6 w-11/12 max-w-4xl justify-center">
+            <!-- Single -->
+            <div class="neon-box p-8 rounded-xl flex-1 text-center cursor-pointer hover:bg-gray-800 transition transform hover:-translate-y-2" onclick="nav('screen-single-setup')">
+                <div class="text-6xl mb-4">👤</div>
+                <h3 class="text-2xl font-bold text-cyan-300 mb-2">เล่นคนเดียว</h3>
+                <p class="text-gray-300">สร้างแพหนีออกจากเกาะให้สำเร็จ!</p>
+            </div>
+            <!-- Battle -->
+            <div class="neon-box p-8 rounded-xl flex-1 text-center cursor-pointer hover:bg-gray-800 transition transform hover:-translate-y-2" onclick="nav('screen-battle-setup')">
+                <div class="text-6xl mb-4">⚔️</div>
+                <h3 class="text-2xl font-bold text-red-400 mb-2">แบทเทิ้ล</h3>
+                <p class="text-gray-300">แข่งกับเพื่อน 2-4 ทีม เพื่อชิงหีบสมบัติ!</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Single Player Setup -->
+    <div id="screen-single-setup" class="screen hidden">
+        <h2 class="text-4xl neon-text mb-6">ตั้งค่า: เล่นคนเดียว</h2>
+        <div class="neon-box p-6 rounded-xl w-11/12 max-w-md">
+            <div class="mb-4">
+                <label class="block text-cyan-300 font-bold mb-2">ระดับความยาก</label>
+                <select id="single-diff" class="w-full p-2 bg-gray-800 border border-cyan-500 rounded text-white">
+                    <option value="easy">ง่าย (เลข 1 หลัก)</option>
+                    <option value="medium">ปานกลาง (เลข 2 หลัก x 1 หลัก)</option>
+                    <option value="hard">ยาก (สุ่มเลขท้าทาย ไม่เกินหลักแสน)</option>
+                </select>
+            </div>
+            <div class="mb-6">
+                <label class="block text-cyan-300 font-bold mb-2">รูปแบบ</label>
+                <select id="single-type" class="w-full p-2 bg-gray-800 border border-cyan-500 rounded text-white" onchange="toggleSingleTime()">
+                    <option value="10items">เล่น 10 ข้อ (จับเวลาสถิติ)</option>
+                    <option value="timeattack">ตั้งเวลานับถอยหลัง</option>
+                </select>
+            </div>
+            <div id="single-time-wrap" class="mb-6 hidden">
+                <label class="block text-cyan-300 font-bold mb-2">เวลา (วินาที)</label>
+                <select id="single-time-val" class="w-full p-2 bg-gray-800 border border-cyan-500 rounded text-white">
+                    <option value="60">60 วินาที</option>
+                    <option value="120">120 วินาที</option>
+                    <option value="180">180 วินาที</option>
+                    <option value="300">300 วินาที</option>
+                </select>
+            </div>
+            <div class="flex gap-4">
+                <button onclick="nav('screen-menu')" class="flex-1 bg-gray-700 py-2 rounded border border-gray-500">กลับ</button>
+                <button onclick="startSingleGame()" class="flex-1 neon-btn py-2 rounded font-bold">เริ่มเกม!</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Battle Setup -->
+    <div id="screen-battle-setup" class="screen hidden">
+        <h2 class="text-4xl neon-text mb-6">ตั้งค่า: แบทเทิ้ล</h2>
+        <div class="neon-box p-6 rounded-xl w-11/12 max-w-lg overflow-y-auto max-h-[80vh]">
+            <div class="mb-4">
+                <label class="block text-cyan-300 font-bold mb-2">จำนวนทีม (2-4 ทีม)</label>
+                <select id="battle-teams-count" class="w-full p-2 bg-gray-800 border border-cyan-500 rounded text-white" onchange="renderBattleInputs()">
+                    <option value="2">2 ทีม</option>
+                    <option value="3">3 ทีม</option>
+                    <option value="4">4 ทีม</option>
+                </select>
+            </div>
+            <div id="battle-team-inputs" class="mb-4 space-y-2">
+                <!-- Inputs generated by JS -->
+            </div>
+            <div class="mb-4">
+                <label class="block text-cyan-300 font-bold mb-2">ความยาก</label>
+                <select id="battle-diff" class="w-full p-2 bg-gray-800 border border-cyan-500 rounded text-white">
+                    <option value="easy">ง่าย</option>
+                    <option value="medium">ปานกลาง</option>
+                    <option value="hard">ยาก</option>
+                </select>
+            </div>
+            <div class="mb-6">
+                <label class="block text-cyan-300 font-bold mb-2">เวลาต่อข้อ (วินาที)</label>
+                <select id="battle-time-val" class="w-full p-2 bg-gray-800 border border-cyan-500 rounded text-white">
+                    <option value="20">20 วินาที</option>
+                    <option value="40" selected>40 วินาที</option>
+                    <option value="60">60 วินาที</option>
+                </select>
+            </div>
+            <div class="flex gap-4">
+                <button onclick="nav('screen-menu')" class="flex-1 bg-gray-700 py-2 rounded border border-gray-500">กลับ</button>
+                <button onclick="startBattleGame()" class="flex-1 danger-btn py-2 rounded font-bold">เข้าสู่สนามรบ!</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Game UI Overlay (Canvas is behind this) -->
+    <canvas id="gameCanvas" class="hidden"></canvas>
+    
+    <div id="screen-game-ui" class="hidden absolute top-0 left-0 w-full h-full pointer-events-none z-10 flex flex-col justify-between">
+        <!-- Top Bar -->
+        <div class="p-4 flex justify-between items-start pointer-events-auto w-full">
+            <div class="neon-box px-4 py-2 rounded text-lg flex flex-col">
+                <span id="ui-mode-text" class="text-cyan-300 font-bold">โหมดเล่นคนเดียว</span>
+                <span id="ui-score-text">แพ: 0/10 ชิ้น</span>
+                <span id="ui-plank-text" class="text-yellow-400">เก็บไม้: 0/3</span>
+            </div>
+            <div class="neon-box px-4 py-2 rounded text-2xl font-bold text-red-400 text-center min-w-[80px]">
+                <span id="ui-timer">00:00</span>
+            </div>
+        </div>
+        
+        <!-- Battle Status Bar (Hidden in single player) -->
+        <div id="ui-battle-status" class="hidden pointer-events-auto absolute top-20 left-1/2 transform -translate-x-1/2 flex gap-2 w-11/12 justify-center flex-wrap">
+            <!-- Populated by JS -->
+        </div>
+
+        <!-- Current Turn Announcer -->
+        <div id="ui-turn-announce" class="hidden absolute inset-0 z-[60] flex flex-col justify-center items-center bg-black bg-opacity-80 pointer-events-auto">
+            <h2 id="ui-turn-text" class="text-5xl md:text-7xl font-bold text-center neon-text text-yellow-400 drop-shadow-2xl mb-8"></h2>
+            <button onclick="readyForNextTurn()" class="neon-btn px-10 py-4 text-3xl rounded-xl font-bold shadow-[0_0_20px_#00ffff] animate-pulse hover:animate-none">พร้อมลุย!</button>
+        </div>
+
+        <!-- Joystick -->
+        <div id="joystick-zone" class="pointer-events-auto">
+            <div id="joystick-knob"></div>
+        </div>
+    </div>
+
+    <!-- Question Hologram -->
+    <div id="screen-question" class="hidden absolute inset-0 z-20 flex justify-center items-center bg-black bg-opacity-70 pointer-events-auto">
+        <div class="hologram p-8 rounded-xl max-w-lg w-11/12 text-center relative flex flex-col items-center">
+            <div class="absolute -top-4 bg-cyan-900 text-cyan-200 px-4 py-1 border border-cyan-400 rounded-full text-sm font-bold animate-pulse">ระบบโฮโลแกรมทำงาน...</div>
+            
+            <h3 id="q-text" class="text-5xl md:text-6xl font-bold text-white mb-8 mt-4 tracking-wider"></h3>
+            
+            <div id="q-choices" class="grid grid-cols-2 gap-4 w-full">
+                <!-- Populated by JS -->
+            </div>
+            
+            <div id="q-timer-bar" class="w-full h-2 bg-gray-800 mt-6 rounded overflow-hidden hidden">
+                <div id="q-timer-fill" class="h-full bg-red-500 w-full transition-all ease-linear"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Battle Attack Selection -->
+    <div id="screen-attack" class="hidden absolute inset-0 z-30 flex justify-center items-center bg-black bg-opacity-80 pointer-events-auto">
+        <div class="neon-box p-8 rounded-xl text-center border-red-500 shadow-[0_0_20px_red]">
+            <h2 class="text-3xl text-red-400 font-bold mb-6">ตอบถูก! เลือกเป้าหมายโจมตี</h2>
+            <div id="attack-targets" class="flex flex-wrap justify-center gap-4">
+                <!-- Populated by JS -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Result / Certificate -->
+    <div id="screen-certificate" class="screen hidden">
+        <div class="certificate p-8 md:p-12 w-11/12 max-w-2xl text-center bg-white text-gray-900">
+            <h1 class="text-4xl md:text-5xl font-bold text-yellow-600 mb-2">Victory Certificate</h1>
+            <h2 class="text-xl md:text-2xl text-gray-700 mb-8 border-b-2 border-yellow-500 pb-2 inline-block">ประกาศเกียรติคุณนักคณิตศาสตร์</h2>
+            
+            <p class="text-lg mb-2">ขอมอบประกาศนียบัตรนี้เพื่อแสดงว่า</p>
+            <p id="cert-name" class="text-4xl md:text-5xl font-bold text-blue-900 mb-6 font-serif"></p>
+            
+            <p id="cert-desc" class="text-lg text-gray-800 mb-8 max-w-md mx-auto"></p>
+            
+            <div class="flex justify-between items-end mt-8 border-t border-gray-300 pt-4">
+                <div class="text-left">
+                    <p class="font-bold">วันที่: <span id="cert-date"></span></p>
+                </div>
+                <div class="text-right">
+                    <p class="font-bold text-sm text-gray-500">ประทับตราสัญลักษณ์</p>
+                    <div class="w-16 h-16 rounded-full border-4 border-yellow-500 text-yellow-500 flex items-center justify-center font-bold text-xl ml-auto mt-1 transform -rotate-12">ผ่าน!</div>
+                </div>
+            </div>
+        </div>
+        <button onclick="resetGameToStart()" class="neon-btn mt-8 px-10 py-3 text-xl rounded-lg font-bold">เริ่มเกมใหม่ (Restart)</button>
+    </div>
+
+    <!-- Developer Credit Footer -->
+    <div class="fixed bottom-1 w-full text-center z-[1000] text-cyan-500 opacity-70 text-xs md:text-sm pointer-events-none mix-blend-screen font-bold">
+        พัฒนาโดย ศักพงษ์และคณะ
+    </div>
+
+    <script>
+        // --- Global State ---
+        let playerName = "";
+        let gameMode = ""; // 'single', 'battle'
+        let difficulty = "easy";
+        
+        // Single Player State
+        let singleType = ""; // '10items', 'timeattack'
+        let singleTimeLimit = 0;
+        let singleTimeElapsed = 0;
+        let singleScore = 0;
+        let singleTotalQuestions = 0;
+        let plankCount = 0;
+
+        let isEscaping = false;
+        let escapePhase = 0;
+        let escapeRaft = { x: 0, y: 0 };
+        
+        // Battle State
+        let teams = []; // {name, hp}
+        let currentTurnIndex = 0;
+        let battleTimePerQ = 40;
+        let battleQTimer = null;
+        let battleTimeLeft = 0;
+
+        // Engine State
+        let animationFrameId;
+        let isPlaying = false;
+        let isQuestionTime = false;
+        let canvas, ctx;
+        let lastTime = 0;
+        
+        // Game Entities
+        let player = { x: 0, y: 0, vx: 0, vy: 0, size: 20, speed: 200, invulnerableTime: 0 };
+        let sharks = [];
+        let planks = [];
+        let island = { x: 0, y: 0, radius: 100 };
+        let particles = [];
+        let waterTrails = []; // จัดเก็บเอฟเฟคการว่ายน้ำแบบสมจริง
+        
+        // Input
+        let keys = { ArrowUp: false, ArrowDown: false, ArrowLeft: false, ArrowRight: false, w:false, a:false, s:false, d:false };
+        let joyVector = { x: 0, y: 0 };
+        
+        // --- Initialization ---
+        window.onload = () => {
+            canvas = document.getElementById('gameCanvas');
+            ctx = canvas.getContext('2d');
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
+            setupInputs();
+        };
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            island.x = canvas.width / 2;
+            island.y = canvas.height / 2;
+        }
+
+        // --- Navigation & Flow ---
+        function nav(screenId) {
+            document.querySelectorAll('.screen').forEach(el => el.classList.add('hidden'));
+            document.getElementById(screenId).classList.remove('hidden');
+            soundFx.click();
+        }
+
+        function showAlert(msg) {
+            document.getElementById('alert-msg').innerText = msg;
+            document.getElementById('alert-modal').classList.remove('hidden');
+            soundFx.error();
+        }
+
+        function startGameFlow() {
+            const input = document.getElementById('playerName').value.trim();
+            if (input === "") {
+                showAlert("กรุณากรอกชื่อผู้เล่นก่อนเริ่มเกม!");
+                return;
+            }
+            playerName = input;
+            toggleBGM(true); // Start AudioContext
+            nav('screen-lesson');
+        }
+
+        // --- UI Setup Helpers ---
+        function toggleSingleTime() {
+            const type = document.getElementById('single-type').value;
+            document.getElementById('single-time-wrap').classList.toggle('hidden', type !== 'timeattack');
+        }
+
+        function renderBattleInputs() {
+            const count = parseInt(document.getElementById('battle-teams-count').value);
+            const container = document.getElementById('battle-team-inputs');
+            container.innerHTML = '';
+            for (let i = 1; i <= count; i++) {
+                container.innerHTML += `
+                    <input type="text" id="team-name-${i}" placeholder="ชื่อทีมที่ ${i}" 
+                    class="w-full p-2 bg-gray-700 border border-red-400 rounded text-white text-center focus:border-red-200 focus:outline-none"
+                    value="${i==1 ? playerName : 'ทีม ' + i}">
+                `;
+            }
+        }
+        renderBattleInputs(); // Init run
+
+        // --- Game Start Logics ---
+        function startSingleGame() {
+            gameMode = 'single';
+            difficulty = document.getElementById('single-diff').value;
+            singleType = document.getElementById('single-type').value;
+            
+            singleScore = 0;
+            singleTotalQuestions = 0;
+            plankCount = 0;
+            singleTimeElapsed = 0;
+            
+            if (singleType === 'timeattack') {
+                singleTimeLimit = parseInt(document.getElementById('single-time-val').value);
+            }
+            
+            document.getElementById('screen-single-setup').classList.add('hidden');
+            initCanvasGame();
+        }
+
+        function startBattleGame() {
+            gameMode = 'battle';
+            difficulty = document.getElementById('battle-diff').value;
+            battleTimePerQ = parseInt(document.getElementById('battle-time-val').value);
+            
+            const count = parseInt(document.getElementById('battle-teams-count').value);
+            teams = [];
+            for (let i = 1; i <= count; i++) {
+                const name = document.getElementById(`team-name-${i}`).value.trim() || `ทีม ${i}`;
+                teams.push({ name: name, hp: 5, active: true });
+            }
+            
+            currentTurnIndex = 0;
+            document.getElementById('screen-battle-setup').classList.add('hidden');
+            
+            // Show battle UI
+            document.getElementById('ui-battle-status').classList.remove('hidden');
+            updateBattleUI();
+            
+            announceTurn(() => {
+                initCanvasGame();
+            });
+        }
+
+        let turnReadyCallback = null;
+
+        function announceTurn(callback) {
+            const activeTeams = teams.filter(t => t.hp > 0);
+            if(activeTeams.length <= 1) {
+                endBattleGame();
+                return;
+            }
+
+            // Find next valid team
+            while(teams[currentTurnIndex].hp <= 0) {
+                currentTurnIndex = (currentTurnIndex + 1) % teams.length;
+            }
+
+            const team = teams[currentTurnIndex];
+            const announce = document.getElementById('ui-turn-announce');
+            const text = document.getElementById('ui-turn-text');
+            
+            text.innerText = `ตาของ: ${team.name}`;
+            announce.classList.remove('hidden');
+            soundFx.click();
+            
+            turnReadyCallback = callback;
+        }
+
+        function readyForNextTurn() {
+            document.getElementById('ui-turn-announce').classList.add('hidden');
+            soundFx.click();
+            if (turnReadyCallback) {
+                turnReadyCallback();
+                turnReadyCallback = null;
+            }
+        }
+
+        function updateBattleUI() {
+            const container = document.getElementById('ui-battle-status');
+            container.innerHTML = '';
+            teams.forEach((t, i) => {
+                if (t.hp <= 0) return;
+                
+                let heartsHtml = '';
+                for(let h=1; h<=5; h++) {
+                    if (t.hp >= h) heartsHtml += '<div class="heart"></div>';
+                    else if (t.hp === h - 0.5) heartsHtml += '<div class="heart heart-half"></div>';
+                    else heartsHtml += '<div class="heart heart-empty"></div>';
+                }
+                
+                const isTurn = i === currentTurnIndex;
+                container.innerHTML += `
+                    <div class="bg-gray-900 border ${isTurn ? 'border-yellow-400 shadow-[0_0_10px_yellow]' : 'border-gray-600'} px-3 py-1 rounded flex flex-col items-center">
+                        <span class="text-sm ${isTurn ? 'text-yellow-400 font-bold' : 'text-gray-300'}">${t.name}</span>
+                        <div class="flex">${heartsHtml}</div>
+                    </div>
+                `;
+            });
+        }
+
+        // --- Canvas Game Engine ---
+        function initCanvasGame() {
+            canvas.classList.remove('hidden');
+            document.getElementById('screen-game-ui').classList.remove('hidden');
+            
+            // Show joystick only on mobile
+            if ('ontouchstart' in window || navigator.maxTouchPoints > 0) {
+                document.getElementById('joystick-zone').style.display = 'block';
+            }
+
+            isEscaping = false;
+            escapePhase = 0;
+
+            // Spawn logic
+            spawnPlayer();
+            spawnPlanks();
+            
+            // Sharks
+            sharks = [];
+            const numSharks = difficulty === 'easy' ? 2 : (difficulty === 'medium' ? 4 : 6);
+            for(let i=0; i<numSharks; i++) spawnShark();
+            
+            plankCount = 0;
+            updateGameUI();
+            
+            isPlaying = true;
+            isQuestionTime = false;
+            lastTime = performance.now();
+            
+            if (gameMode === 'single' && singleType === 'timeattack') {
+                singleTimeElapsed = singleTimeLimit;
+            } else {
+                singleTimeElapsed = 0;
+            }
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        function spawnPlayer() {
+            // Spawn near edge
+            player.x = 50;
+            player.y = canvas.height / 2;
+            player.vx = 0;
+            player.vy = 0;
+            player.invulnerableTime = 2; // อมตะ 2 วินาทีตอนเกิดใหม่
+        }
+
+        function spawnPlanks() {
+            planks = [];
+            for (let i = 0; i < 3; i++) {
+                let px, py, dist;
+                do {
+                    px = 50 + Math.random() * (canvas.width - 100);
+                    py = 50 + Math.random() * (canvas.height - 100);
+                    // Distance from island
+                    let dx = px - island.x;
+                    let dy = py - island.y;
+                    dist = Math.sqrt(dx*dx + dy*dy);
+                } while (dist < island.radius + 50); // Keep away from island center
+                
+                planks.push({ x: px, y: py, width: 30, height: 15, active: true, floatOffset: Math.random()*Math.PI*2 });
+            }
+        }
+
+        function spawnShark() {
+            sharks.push({
+                x: Math.random() > 0.5 ? 0 : canvas.width,
+                y: Math.random() * canvas.height,
+                speed: 50 + Math.random() * 50,
+                angle: 0
+            });
+        }
+
+        function updateGameUI() {
+            if (gameMode === 'single') {
+                document.getElementById('ui-mode-text').innerText = `เล่นคนเดียว (${difficulty})`;
+                document.getElementById('ui-score-text').innerText = `แพ: ${singleScore}/10 ชิ้น`;
+                document.getElementById('ui-plank-text').innerText = `ไม้: ${plankCount}/3`;
+            } else {
+                document.getElementById('ui-mode-text').innerText = `แบทเทิ้ล: ${teams[currentTurnIndex].name}`;
+                document.getElementById('ui-score-text').innerText = `โจมตีเพื่อชัยชนะ!`;
+                document.getElementById('ui-plank-text').innerText = `ไม้: ${plankCount}/3`;
+            }
+        }
+
+        function createParticles(x, y, color) {
+            for(let i=0; i<10; i++) {
+                particles.push({
+                    x: x, y: y,
+                    vx: (Math.random()-0.5)*200, vy: (Math.random()-0.5)*200,
+                    life: 1, color: color
+                });
+            }
+        }
+
+        function gameLoop(time) {
+            if (!isPlaying) return;
+            let dt = (time - lastTime) / 1000;
+            lastTime = time;
+            
+            if (dt > 0.1) dt = 0.1; // Cap dt
+
+            if (!isQuestionTime) {
+                updatePhysics(dt);
+                updateTimers(dt);
+            }
+            
+            drawGame(time);
+            
+            animationFrameId = requestAnimationFrame(gameLoop);
+        }
+
+        function updateTimers(dt) {
+            if (isEscaping) return; // หยุดเวลาขณะกำลังเล่นฉากจบ
+
+            if (gameMode === 'single') {
+                if (singleType === 'timeattack') {
+                    singleTimeElapsed -= dt;
+                    if (singleTimeElapsed <= 0) {
+                        endSingleGame();
+                        return;
+                    }
+                    document.getElementById('ui-timer').innerText = Math.ceil(singleTimeElapsed) + "s";
+                } else {
+                    singleTimeElapsed += dt;
+                    document.getElementById('ui-timer').innerText = formatTime(singleTimeElapsed);
+                }
+            } else {
+                // Battle mode canvas phase has no timer (timer is for question)
+                document.getElementById('ui-timer').innerText = "ว่ายน้ำหาไม้!";
+            }
+        }
+
+        function formatTime(sec) {
+            let m = Math.floor(sec / 60);
+            let s = Math.floor(sec % 60);
+            return (m<10?"0":"")+m + ":" + (s<10?"0":"")+s;
+        }
+
+        function updatePhysics(dt) {
+            if (isEscaping) {
+                updateEscapeCinematic(dt);
+                return; // ข้ามระบบฟิสิกส์ปกติไปเลยเพื่อให้แอนิเมชันทำงาน
+            }
+
+            // Player movement
+            let dx = 0, dy = 0;
+            if (keys.ArrowUp || keys.w) dy -= 1;
+            if (keys.ArrowDown || keys.s) dy += 1;
+            if (keys.ArrowLeft || keys.a) dx -= 1;
+            if (keys.ArrowRight || keys.d) dx += 1;
+
+            if (joyVector.x !== 0 || joyVector.y !== 0) {
+                dx = joyVector.x;
+                dy = joyVector.y;
+            }
+
+            // Normalize vector
+            let len = Math.sqrt(dx*dx + dy*dy);
+            if (len > 0) {
+                dx /= len; dy /= len;
+            }
+
+            // Apply velocity with smoothing
+            player.vx = player.vx * 0.8 + (dx * player.speed) * 0.2;
+            player.vy = player.vy * 0.8 + (dy * player.speed) * 0.2;
+
+            player.x += player.vx * dt;
+            player.y += player.vy * dt;
+
+            // ลดเวลาอมตะลงตามเฟรมเรต
+            if (player.invulnerableTime > 0) {
+                player.invulnerableTime -= dt;
+            }
+
+            // --- Water Trails Effect (พรายน้ำตอนว่าย) ---
+            if (Math.abs(player.vx) > 5 || Math.abs(player.vy) > 5) {
+                // สุ่มสร้างเพื่อให้ไม่หนาแน่นเกินไป
+                if (Math.random() > 0.5) {
+                    waterTrails.push({
+                        x: player.x - (player.vx * dt), 
+                        y: player.y - (player.vy * dt),
+                        radius: player.size / 2,
+                        maxRadius: player.size * 2,
+                        opacity: 0.5,
+                        life: 1
+                    });
+                }
+            }
+
+            // Constrain to screen
+            player.x = Math.max(player.size, Math.min(canvas.width - player.size, player.x));
+            player.y = Math.max(player.size, Math.min(canvas.height - player.size, player.y));
+
+            // Island Collision (Push out)
+            let ix = player.x - island.x;
+            let iy = player.y - island.y;
+            let idist = Math.sqrt(ix*ix + iy*iy);
+            if (idist < island.radius + player.size) {
+                player.x = island.x + (ix/idist) * (island.radius + player.size);
+                player.y = island.y + (iy/idist) * (island.radius + player.size);
+            }
+
+            // Shark AI & Collision
+            sharks.forEach(s => {
+                // Homing towards player slightly
+                let sx = player.x - s.x;
+                let sy = player.y - s.y;
+                let sdist = Math.sqrt(sx*sx + sy*sy);
+                
+                let targetAngle = Math.atan2(sy, sx);
+                
+                // Slowly turn towards player
+                let angleDiff = targetAngle - s.angle;
+                while (angleDiff > Math.PI) angleDiff -= Math.PI*2;
+                while (angleDiff < -Math.PI) angleDiff += Math.PI*2;
+                s.angle += angleDiff * 1.5 * dt;
+
+                s.x += Math.cos(s.angle) * s.speed * dt;
+                s.y += Math.sin(s.angle) * s.speed * dt;
+
+                // Screen wrap for sharks
+                if (s.x < -50) s.x = canvas.width + 50;
+                if (s.x > canvas.width + 50) s.x = -50;
+                if (s.y < -50) s.y = canvas.height + 50;
+                if (s.y > canvas.height + 50) s.y = -50;
+
+                // Hit player (เพิ่มเงื่อนไขว่าต้องไม่เป็นอมตะ)
+                if (sdist < player.size + 15 && player.invulnerableTime <= 0) {
+                    // Bounce player AWAY from shark (ผลักออกให้กระเด็น)
+                    let nx = sx / sdist;
+                    let ny = sy / sdist;
+                    
+                    player.vx = nx * 800;
+                    player.vy = ny * 800;
+                    
+                    player.invulnerableTime = 1.5; // เป็นอมตะชั่วคราว 1.5 วินาที
+                    
+                    createParticles(player.x, player.y, '#ff0000');
+                    soundFx.error();
+                }
+            });
+
+            // Plank Collection
+            planks.forEach(p => {
+                if(p.active) {
+                    let px = player.x - p.x;
+                    let py = player.y - p.y;
+                    if (Math.sqrt(px*px + py*py) < player.size + 15) {
+                        p.active = false;
+                        plankCount++;
+                        createParticles(p.x, p.y, '#ffd700');
+                        soundFx.collect();
+                        updateGameUI();
+                        
+                        if (plankCount >= 3) {
+                            triggerQuestion();
+                        }
+                    }
+                }
+            });
+
+            // Update Particles
+            particles.forEach(p => {
+                p.x += p.vx * dt;
+                p.y += p.vy * dt;
+                p.life -= dt * 2;
+            });
+            particles = particles.filter(p => p.life > 0);
+
+            // Update Water Trails
+            waterTrails.forEach(t => {
+                t.radius += 20 * dt; // ขยายวงน้ำ
+                t.life -= dt * 1.5;  // ลดความชัด
+            });
+            waterTrails = waterTrails.filter(t => t.life > 0);
+        }
+
+        function updateEscapeCinematic(dt) {
+            // เฟส 1: ว่ายน้ำไปที่แพตรงกลางเกาะ
+            if (escapePhase === 1) {
+                let targetX = escapeRaft.x + 40;
+                let targetY = escapeRaft.y + 20;
+                let dx = targetX - player.x;
+                let dy = targetY - player.y;
+                let dist = Math.sqrt(dx*dx + dy*dy);
+                
+                if (dist < 5) {
+                    escapePhase = 2; // ถึงแพแล้ว เริ่มพายออก
+                } else {
+                    player.vx = (dx / dist) * 150;
+                    player.vy = (dy / dist) * 150;
+                    player.x += player.vx * dt;
+                    player.y += player.vy * dt;
+                }
+            }
+            // เฟส 2: นั่งแพพายหนีออกจากจอ (ขวาล่าง)
+            else if (escapePhase === 2) {
+                player.vx = 150; // กำหนดความเร็วแกน X, Y จำลองเพื่อให้ตัวละครหันหน้าถูกทิศ
+                player.vy = 100;
+                
+                escapeRaft.x += player.vx * dt;
+                escapeRaft.y += player.vy * dt;
+                
+                player.x = escapeRaft.x + 40;
+                player.y = escapeRaft.y + 20;
+                
+                // สร้างเอฟเฟคพรายน้ำตามหลังแพ
+                if (Math.random() > 0.5) {
+                    waterTrails.push({
+                        x: escapeRaft.x, 
+                        y: escapeRaft.y + 20,
+                        radius: 10,
+                        maxRadius: 30,
+                        opacity: 0.5,
+                        life: 1
+                    });
+                }
+
+                // ถ้าแพหลุดขอบจอ ให้จบเกมแบบชนะ
+                if (escapeRaft.x > canvas.width + 100 || escapeRaft.y > canvas.height + 100) {
+                    endSingleGame(true);
+                }
+            }
+            
+            // อัพเดทพรายน้ำระหว่างแอนิเมชันจบ
+            waterTrails.forEach(t => {
+                t.radius += 20 * dt;
+                t.life -= dt * 1.5;
+            });
+            waterTrails = waterTrails.filter(t => t.life > 0);
+        }
+
+        function drawGame(time) {
+            // Ocean Background
+            ctx.fillStyle = '#0a192f';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw Waves (simple subtle lines)
+            ctx.strokeStyle = 'rgba(0, 255, 255, 0.1)';
+            ctx.lineWidth = 2;
+            for(let i=0; i<5; i++) {
+                ctx.beginPath();
+                for(let x=0; x<canvas.width; x+=50) {
+                    ctx.lineTo(x, (i*200 + (time/10)%200) + Math.sin(x/100 + time/500)*20);
+                }
+                ctx.stroke();
+            }
+
+            // Draw Island
+            ctx.fillStyle = '#c2b280'; // Sand
+            ctx.beginPath();
+            ctx.arc(island.x, island.y, island.radius, 0, Math.PI*2);
+            ctx.fill();
+            // Island glow
+            ctx.shadowColor = '#00ffff';
+            ctx.shadowBlur = 20;
+            ctx.strokeStyle = '#8b4513';
+            ctx.lineWidth = 4;
+            ctx.stroke();
+            ctx.shadowBlur = 0; // reset
+
+            // Draw Water Trails
+            waterTrails.forEach(t => {
+                ctx.beginPath();
+                ctx.arc(t.x, t.y, t.radius, 0, Math.PI * 2);
+                ctx.strokeStyle = `rgba(0, 255, 255, ${t.life * 0.3})`;
+                ctx.lineWidth = 2;
+                ctx.stroke();
+            });
+
+            // Draw Raft (if Single Player)
+            if (gameMode === 'single') {
+                ctx.fillStyle = '#8b4513';
+                let startX = isEscaping ? escapeRaft.x : island.x - 40;
+                let startY = isEscaping ? escapeRaft.y : island.y - 40;
+                let planksToShow = isEscaping ? 10 : singleScore;
+                
+                for(let i=0; i<10; i++) {
+                    if (i < planksToShow) {
+                        ctx.fillRect(startX + (i%5)*16, startY + Math.floor(i/5)*40, 14, 38);
+                    } else {
+                        ctx.strokeStyle = 'rgba(139, 69, 19, 0.3)';
+                        ctx.strokeRect(startX + (i%5)*16, startY + Math.floor(i/5)*40, 14, 38);
+                    }
+                }
+            } else {
+                // Battle mode chest
+                ctx.fillStyle = '#ffd700';
+                ctx.fillRect(island.x - 20, island.y - 15, 40, 30);
+                ctx.fillStyle = '#8b4513';
+                ctx.fillRect(island.x - 20, island.y - 5, 40, 5);
+            }
+
+            // Draw Planks
+            planks.forEach(p => {
+                if (p.active) {
+                    ctx.save();
+                    ctx.translate(p.x, p.y + Math.sin(time/200 + p.floatOffset)*5);
+                    ctx.rotate(p.floatOffset);
+                    ctx.fillStyle = '#8b4513';
+                    ctx.shadowColor = '#00ffff';
+                    ctx.shadowBlur = 10;
+                    ctx.fillRect(-p.width/2, -p.height/2, p.width, p.height);
+                    // Number on plank
+                    ctx.fillStyle = 'white';
+                    ctx.font = '12px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.shadowBlur = 0;
+                    ctx.fillText("?", 0, 0);
+                    ctx.restore();
+                }
+            });
+
+            // Draw Player (Swimming Person)
+            ctx.save();
+            
+            // เอฟเฟคกระพริบตอนโดนกัด (อมตะ)
+            if (player.invulnerableTime > 0) {
+                ctx.globalAlpha = Math.floor(time / 150) % 2 === 0 ? 0.3 : 1;
+            }
+            
+            ctx.translate(player.x, player.y);
+            let pAngle = Math.atan2(player.vy, player.vx);
+            if (player.vx === 0 && player.vy === 0) pAngle = -Math.PI/2;
+            ctx.rotate(pAngle);
+            
+            ctx.fillStyle = '#ffcc99'; // Head
+            ctx.beginPath(); ctx.arc(0, 0, player.size/2, 0, Math.PI*2); ctx.fill();
+            ctx.fillStyle = 'cyan'; // Body
+            ctx.fillRect(-player.size, -player.size/3, player.size, player.size/1.5);
+            ctx.restore();
+
+            // Draw Sharks
+            sharks.forEach(s => {
+                ctx.save();
+                ctx.translate(s.x, s.y);
+                ctx.rotate(s.angle);
+                ctx.fillStyle = '#4a5568'; // Gray
+                // Body
+                ctx.beginPath();
+                ctx.ellipse(0, 0, 25, 10, 0, 0, Math.PI*2);
+                ctx.fill();
+                // Tail
+                let tailWag = Math.sin(time/100) * 10;
+                ctx.beginPath();
+                ctx.moveTo(-25, 0);
+                ctx.lineTo(-35, -10 + tailWag);
+                ctx.lineTo(-35, 10 + tailWag);
+                ctx.fill();
+                // Fin
+                ctx.fillStyle = '#2d3748';
+                ctx.beginPath();
+                ctx.moveTo(5, 0);
+                ctx.lineTo(-5, -15);
+                ctx.lineTo(-10, 0);
+                ctx.fill();
+                ctx.restore();
+            });
+
+            // Draw Particles
+            particles.forEach(p => {
+                ctx.globalAlpha = p.life;
+                ctx.fillStyle = p.color;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, 3, 0, Math.PI*2);
+                ctx.fill();
+            });
+            ctx.globalAlpha = 1;
+        }
+
+        // --- Math Generation ---
+        function generateMathQuestion() {
+            let num1, num2;
+            
+            // Constrain results based on difficulty
+            if (difficulty === 'easy') {
+                num1 = Math.floor(Math.random() * 9) + 1; // 1-9
+                num2 = Math.floor(Math.random() * 9) + 1; // 1-9
+            } else if (difficulty === 'medium') {
+                num1 = Math.floor(Math.random() * 90) + 10; // 10-99
+                num2 = Math.floor(Math.random() * 9) + 1;  // 1-9
+            } else {
+                // Hard: Up to 100,000 result roughly, max 2 digit multiplier
+                // e.g., 3-digit x 2-digit (max 999 x 99 = ~98,000)
+                num1 = Math.floor(Math.random() * 900) + 100; // 100-999
+                num2 = Math.floor(Math.random() * 90) + 10;   // 10-99
+            }
+
+            // Ensure random swap for variety
+            if (Math.random() > 0.5) {
+                let temp = num1; num1 = num2; num2 = temp;
+            }
+
+            let ans = num1 * num2;
+            let qText = `${num1} × ${num2} = ?`;
+
+            // Generate wrong answers
+            let choices = [ans];
+            while (choices.length < 4) {
+                let error = Math.floor(Math.random() * 20) - 10;
+                if (error === 0) error = 1;
+                let wrongAns;
+                
+                // Smart wrong answers based on common mistakes
+                let r = Math.random();
+                if (r < 0.3) wrongAns = ans + error; // slight off
+                else if (r < 0.6) wrongAns = (num1+1) * num2; // added 1 to multiplier
+                else if (r < 0.8 && difficulty === 'easy') wrongAns = num1 + num2; // added instead of multiply
+                else wrongAns = ans + (Math.floor(Math.random()*100)+10);
+                
+                if (wrongAns > 0 && !choices.includes(wrongAns)) {
+                    choices.push(wrongAns);
+                }
+            }
+
+            // Shuffle choices
+            choices.sort(() => Math.random() - 0.5);
+
+            return { text: qText, ans: ans, choices: choices };
+        }
+
+        // --- Hologram Question Logic ---
+        let currentAns = null;
+
+        function triggerQuestion() {
+            isQuestionTime = true;
+            keys = { ArrowUp: false, ArrowDown: false, ArrowLeft: false, ArrowRight: false, w:false, a:false, s:false, d:false };
+            joyVector = { x: 0, y: 0 };
+            document.getElementById('joystick-knob').style.transform = `translate(0px, 0px)`;
+
+            const q = generateMathQuestion();
+            currentAns = q.ans;
+            
+            document.getElementById('q-text').innerText = q.text;
+            
+            const choicesContainer = document.getElementById('q-choices');
+            choicesContainer.innerHTML = '';
+            
+            q.choices.forEach(c => {
+                const btn = document.createElement('button');
+                btn.className = "neon-btn w-full py-4 text-2xl font-bold rounded shadow-lg";
+                btn.innerText = c;
+                btn.onclick = () => answerQuestion(c);
+                choicesContainer.appendChild(btn);
+            });
+
+            document.getElementById('screen-question').classList.remove('hidden');
+            soundFx.click();
+
+            // Timer logic for Battle Mode
+            if (gameMode === 'battle') {
+                document.getElementById('q-timer-bar').classList.remove('hidden');
+                battleTimeLeft = battleTimePerQ;
+                const fill = document.getElementById('q-timer-fill');
+                fill.style.width = '100%';
+                
+                battleQTimer = setInterval(() => {
+                    battleTimeLeft -= 1;
+                    let pct = (battleTimeLeft / battleTimePerQ) * 100;
+                    fill.style.width = pct + '%';
+                    
+                    if(battleTimeLeft <= 10) fill.classList.replace('bg-cyan-500', 'bg-red-500');
+                    else fill.classList.add('bg-cyan-500');
+
+                    if (battleTimeLeft <= 0) {
+                        clearInterval(battleQTimer);
+                        handleWrongAnswer(); // Timeout
+                    }
+                }, 1000);
+            } else {
+                document.getElementById('q-timer-bar').classList.add('hidden');
+            }
+        }
+
+        function answerQuestion(val) {
+            if (battleQTimer) clearInterval(battleQTimer);
+            
+            if (val === currentAns) {
+                soundFx.correct();
+                handleCorrectAnswer();
+            } else {
+                soundFx.wrong();
+                handleWrongAnswer();
+            }
+        }
+
+        function handleCorrectAnswer() {
+            document.getElementById('screen-question').classList.add('hidden');
+            
+            if (gameMode === 'single') {
+                singleScore++;
+                singleTotalQuestions++;
+                updateGameUI();
+                createParticles(island.x, island.y, '#8b4513'); // Wood particles on island
+                
+                if (singleScore >= 10) {
+                    startEscapeSequence(); // เรียกใช้ฉากจบ
+                } else {
+                    resumeCanvas();
+                }
+            } else {
+                // Battle mode: Attack!
+                showAttackScreen();
+            }
+        }
+
+        function handleWrongAnswer() {
+            document.getElementById('screen-question').classList.add('hidden');
+            
+            if (gameMode === 'single') {
+                singleTotalQuestions++;
+                // Flash screen red
+                ctx.fillStyle = 'rgba(255, 0, 0, 0.3)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                resumeCanvas();
+            } else {
+                // Battle mode penalty (-0.5 hp)
+                teams[currentTurnIndex].hp -= 0.5;
+                updateBattleUI();
+                
+                if (teams[currentTurnIndex].hp <= 0) {
+                    showAlert(`ทีม ${teams[currentTurnIndex].name} พ่ายแพ้และจมน้ำ!`);
+                }
+                
+                nextBattleTurn();
+            }
+        }
+
+        function resumeCanvas() {
+            plankCount = 0;
+            spawnPlanks();
+            updateGameUI();
+            isQuestionTime = false;
+        }
+
+        function startEscapeSequence() {
+            isQuestionTime = false;
+            isEscaping = true;
+            escapePhase = 1;
+            escapeRaft = { x: island.x - 40, y: island.y - 40 };
+            document.getElementById('screen-game-ui').classList.add('hidden'); // ซ่อน UI ระหว่างหนี
+            player.invulnerableTime = 9999; // เป็นอมตะชั่วคราวตลอดการหนี ฉลามกัดไม่เข้า
+        }
+
+        // --- Battle Attack Logic ---
+        function showAttackScreen() {
+            const container = document.getElementById('attack-targets');
+            container.innerHTML = '';
+            
+            teams.forEach((t, i) => {
+                if(i !== currentTurnIndex && t.hp > 0) {
+                    const btn = document.createElement('button');
+                    btn.className = "danger-btn px-6 py-4 rounded text-xl font-bold text-white shadow-lg m-2 hover:scale-110 transform transition";
+                    btn.innerHTML = `โจมตี <br> ${t.name}`;
+                    btn.onclick = () => executeAttack(i);
+                    container.appendChild(btn);
+                }
+            });
+            
+            document.getElementById('screen-attack').classList.remove('hidden');
+        }
+
+        function executeAttack(targetIndex) {
+            soundFx.attack();
+            teams[targetIndex].hp -= 1;
+            document.getElementById('screen-attack').classList.add('hidden');
+            updateBattleUI();
+            
+            if (teams[targetIndex].hp <= 0) {
+                showAlert(`ทีม ${teams[targetIndex].name} ถูกกำจัด!`);
+            }
+            
+            nextBattleTurn();
+        }
+
+        function nextBattleTurn() {
+            const activeTeams = teams.filter(t => t.hp > 0);
+            
+            if (activeTeams.length <= 1) {
+                endBattleGame();
+                return;
+            }
+            
+            currentTurnIndex = (currentTurnIndex + 1) % teams.length;
+            announceTurn(() => {
+                resumeCanvas();
+                // Reset player position for next team
+                spawnPlayer(); 
+            });
+        }
+
+        // --- End Game Logic ---
+        function endSingleGame(isWin = false) {
+            isPlaying = false;
+            cancelAnimationFrame(animationFrameId);
+            
+            canvas.classList.add('hidden');
+            document.getElementById('screen-game-ui').classList.add('hidden');
+            
+            if (isWin) {
+                soundFx.win();
+                showCertificate(
+                    playerName, 
+                    `สำเร็จการสร้างแพหนีออกจากเกาะ<br>โหมด: เล่นคนเดียว (${difficulty})<br>ทำไปได้ ${singleScore} ข้อ จาก ${singleTotalQuestions} ครั้ง<br>ใช้เวลา: ${singleType === '10items' ? formatTime(singleTimeElapsed) : singleTimeLimit - singleTimeElapsed + ' วินาที'}`
+                );
+            } else {
+                soundFx.wrong();
+                showAlert("หมดเวลา! คุณถูกฉลามล้อมไว้แล้ว");
+                setTimeout(() => nav('screen-menu'), 2000);
+            }
+        }
+
+        function endBattleGame() {
+            isPlaying = false;
+            cancelAnimationFrame(animationFrameId);
+            
+            canvas.classList.add('hidden');
+            document.getElementById('screen-game-ui').classList.add('hidden');
+            document.getElementById('ui-battle-status').classList.add('hidden');
+            
+            const winner = teams.find(t => t.hp > 0);
+            soundFx.win();
+            
+            if(winner) {
+                showCertificate(
+                    winner.name,
+                    `พิชิตมหาสมุทรและได้รับหีบสมบัติ<br>โหมด: แบทเทิ้ลผู้รอดชีวิต (${difficulty})<br>ทีมที่รอดชีวิตเป็นทีมสุดท้าย!`
+                );
+            } else {
+                showAlert("ไม่มีผู้รอดชีวิต...");
+                setTimeout(() => nav('screen-menu'), 2000);
+            }
+        }
+
+        function showCertificate(name, descHTML) {
+            document.getElementById('cert-name').innerText = name;
+            document.getElementById('cert-desc').innerHTML = descHTML;
+            
+            const today = new Date();
+            document.getElementById('cert-date').innerText = `${today.getDate()}/${today.getMonth()+1}/${today.getFullYear()}`;
+            
+            nav('screen-certificate');
+        }
+
+        function resetGameToStart() {
+            document.getElementById('playerName').value = '';
+            playerName = '';
+            toggleBGM(false);
+            nav('screen-intro');
+        }
+
+        // --- Input Handling ---
+        function setupInputs() {
+            // Keyboard
+            window.addEventListener('keydown', e => { if(keys.hasOwnProperty(e.key)) keys[e.key] = true; });
+            window.addEventListener('keyup', e => { if(keys.hasOwnProperty(e.key)) keys[e.key] = false; });
+            
+            // Joystick
+            const zone = document.getElementById('joystick-zone');
+            const knob = document.getElementById('joystick-knob');
+            let isDragging = false;
+            let center = { x: 0, y: 0 };
+            const maxDist = 35; // Radius of zone - knob radius
+
+            zone.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                isDragging = true;
+                let rect = zone.getBoundingClientRect();
+                center.x = rect.left + rect.width / 2;
+                center.y = rect.top + rect.height / 2;
+                updateJoy(e.touches[0]);
+            }, {passive: false});
+
+            zone.addEventListener('touchmove', (e) => {
+                e.preventDefault();
+                if(!isDragging) return;
+                updateJoy(e.touches[0]);
+            }, {passive: false});
+
+            zone.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                isDragging = false;
+                joyVector = {x: 0, y: 0};
+                knob.style.transform = `translate(0px, 0px)`;
+            }, {passive: false});
+
+            // Mouse fallback for testing UI
+            zone.addEventListener('mousedown', (e) => {
+                isDragging = true;
+                let rect = zone.getBoundingClientRect();
+                center.x = rect.left + rect.width / 2;
+                center.y = rect.top + rect.height / 2;
+                updateJoy(e);
+            });
+            window.addEventListener('mousemove', (e) => {
+                if(!isDragging) return;
+                updateJoy(e);
+            });
+            window.addEventListener('mouseup', () => {
+                if(!isDragging) return;
+                isDragging = false;
+                joyVector = {x: 0, y: 0};
+                knob.style.transform = `translate(0px, 0px)`;
+            });
+
+            function updateJoy(e) {
+                let dx = e.clientX - center.x;
+                let dy = e.clientY - center.y;
+                let dist = Math.sqrt(dx*dx + dy*dy);
+                
+                if (dist > maxDist) {
+                    dx = (dx / dist) * maxDist;
+                    dy = (dy / dist) * maxDist;
+                }
+                
+                knob.style.transform = `translate(${dx}px, ${dy}px)`;
+                
+                // Normalize for vector
+                joyVector.x = dx / maxDist;
+                joyVector.y = dy / maxDist;
+            }
+        }
+    </script>
+</body>
+</html>
